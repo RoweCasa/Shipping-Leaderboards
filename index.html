@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Daily ShipStation Leaderboard</title>
+  <style>
+    :root{
+      --header-grad: linear-gradient(90deg,#0a5d42,#2d9c6f);
+      --bg-start:#0f1720;
+      --bg-end:#1b2730;
+      --ft:#34a853;
+      --pt:#4285f4;
+      --wh:#f57c00;
+      --gold:#ffd700;
+      --silver:#c0c0c0;
+      --bronze:#cd7f32;
+      --row-light:#f8f9fa;
+      --row-dark:#eef1f3;
+      --card-bg: rgba(255,255,255,0.98);
+    }
+    html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:linear-gradient(180deg,var(--bg-start),var(--bg-end));color:#111;}
+    .wrap{max-width:95%;margin:18px auto;padding:18px;}
+    
+    /* Header */
+    .header{
+      display:flex;align-items:center;gap:16px;padding:16px;border-radius:10px;background:var(--header-grad);box-shadow:0 8px 24px rgba(5,10,10,0.45);color:white;
+    }
+    .header-center{flex:1;text-align:center}
+    .title{font-weight:800;letter-spacing:1.5px;font-size:44px;margin:0;padding:0;text-transform:capitalize}
+    .meta{font-size:26px;color:rgba(255,255,255,0.95);margin-top:10px;font-weight:600}
+
+    /* Boards */
+    .boards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:22px}
+    .card{
+      background:var(--card-bg);
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 10px 30px rgba(2,6,10,0.35), 0 20px 60px rgba(0,0,0,0.6);
+      display:flex;
+      flex-direction:column;
+      height:calc(100vh - 220px);
+      min-height:700px;
+    }
+    .card-head{padding:18px 14px;color:#fff;font-weight:700;text-align:center;font-size:22px}
+    .card-body{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:0;background:#2a2f3a}
+    
+    /* Table container structure */
+    .table-container{display:flex;flex-direction:column;height:100%;overflow:hidden}
+    
+    /* Fixed header table */
+    .header-table{width:100%;border-collapse:collapse;flex-shrink:0;table-layout:fixed}
+    .header-table thead th{
+      padding:10px 4px;
+      text-align:center;
+      font-weight:700;
+      color:white;
+      background:#1a1f28;
+      font-size:clamp(9.5px, 1.05vw, 13.5px);
+      white-space:nowrap;
+      box-sizing:border-box;
+      line-height:1.2;
+    }
+    
+    /* Only Avg column can wrap */
+    .header-table thead th.col-avg{
+      white-space:normal;
+      line-height:1.1;
+      padding:8px 2px;
+    }
+    
+    /* Scrolling body wrapper */
+    .scroll-wrapper{
+      flex:1;
+      position:relative;
+      overflow:hidden;
+    }
+    
+    .scroll-content{
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      will-change:transform;
+    }
+    
+    .body-table{
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+    }
+    
+    .body-table tbody tr{
+      display:table;
+      width:100%;
+      table-layout:fixed;
+    }
+    
+    .body-table td{
+      padding:10px 4px;
+      text-align:center;
+      border-bottom:1px solid rgba(255,255,255,0.05);
+      vertical-align:middle;
+      font-size:clamp(11px, 1.2vw, 15px);
+      color:#fff;
+      box-sizing:border-box;
+      overflow-wrap:break-word;
+    }
+    
+    /* Remove border from medal rows */
+    .medal-gold td, .medal-silver td, .medal-bronze td{border-bottom:none}
+    .col-rank{font-size:clamp(13px, 1.4vw, 17px);font-weight:700;width:10%}
+    .col-employee{
+      text-align:center;
+      padding-left:4px;
+      padding-right:4px;
+      font-size:clamp(11px, 1.2vw, 15px);
+      font-weight:600;
+      white-space:normal;
+      word-wrap:break-word;
+      width:32%;
+      line-height:1.3;
+    }
+    .col-prod{font-size:clamp(11px, 1.2vw, 15px);font-weight:600;width:19%}
+    .col-orders{font-size:clamp(11px, 1.2vw, 15px);font-weight:600;width:17%}
+    .col-avg{font-size:clamp(10px, 1.1vw, 13px);font-weight:600;width:22%}
+
+    /* row shading */
+    .body-table tbody tr:nth-child(odd) td{background:#353b47}
+    .body-table tbody tr:nth-child(even) td{background:#2e343f}
+
+    /* medals - highlight entire row */
+    .medal-gold td{background:var(--gold) !important;color:#000;font-weight:700}
+    .medal-silver td{background:var(--silver) !important;color:#000;font-weight:700}
+    .medal-bronze td{background:var(--bronze) !important;color:#000;font-weight:700}
+
+    /* empty state */
+    .empty{color:#b0b5bd;padding:20px;text-align:center;font-style:italic}
+
+    /* responsive */
+    @media (max-width:1100px){
+      .boards{grid-template-columns:1fr;}
+      .card{height:600px;margin-bottom:15px}
+      .col-employee{width:auto}
+    }
+    
+    @media (max-width:768px){
+      body{padding:10px;}
+      .wrap{padding:10px;margin:10px auto;}
+      
+      .header{padding:20px;gap:10px;}
+      .title{font-size:24px;letter-spacing:0.5px}
+      .meta{font-size:16px;}
+      
+      .boards{gap:12px;margin-top:12px}
+      .card{height:500px;}
+      .card-head{padding:10px;font-size:14px;}
+      
+      .header-table thead th{padding:8px 4px;font-size:11px}
+      .body-table td{padding:8px 4px;font-size:11px}
+      
+      .col-rank{width:45px;font-size:11px}
+      .col-employee{font-size:11px;padding-left:6px;padding-right:6px;white-space:normal;word-break:break-word}
+      .col-prod{width:17%;font-size:10px}
+      .col-orders{width:17%;font-size:10px}
+      .col-avg{width:16%;font-size:10px}
+    }
+    
+    @media (max-width:480px){
+      .title{font-size:20px;}
+      .meta{font-size:14px;}
+      
+      .card{height:450px;}
+      .card-head{font-size:12px;padding:8px;}
+      
+      .header-table thead th{padding:6px 3px;font-size:10px}
+      .body-table td{padding:6px 3px;font-size:10px}
+      
+      .col-rank{width:40px;font-size:10px}
+      .col-employee{font-size:10px;padding-left:4px;padding-right:4px}
+      .col-prod{width:17%;font-size:9px}
+      .col-orders{width:17%;font-size:9px}
+      .col-avg{width:16%;font-size:9px}
+    }
+
+    .notice{grid-column:1/-1;padding:12px;border-radius:8px;background:rgba(255,255,255,0.04);color:#fff;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header" role="banner">
+      <div style="width:56px"></div>
+      <div class="header-center">
+        <div class="title">Today's Shipping Leaderboard</div>
+        <div id="weekRange" class="meta">Week: loading…</div>
+      </div>
+      <div style="width:56px"></div>
+    </div>
+
+    <div id="boards" class="boards" aria-live="polite" style="margin-top:18px">
+      <div class="notice">Loading data...</div>
+    </div>
+  </div>
+  
+  <div id="debug" style="display:none"></div>
+
+<script>
+(async function(){
+  const SHEET_ID = '1-S1OU7nw_085IXVbfiOY5qDPuRcPx2RqQJg8pnOqU9I';
+  const GID = '165470098';
+  const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+  
+  const debugEl = document.getElementById('debug');
+  function log(msg, isError = false){
+    console.log(msg);
+    if(debugEl){
+      debugEl.classList.add('show');
+      debugEl.innerHTML += `<div style="color:${isError?'#f00':'#0f0'}">${new Date().toLocaleTimeString()}: ${msg}</div>`;
+    }
+  }
+
+  log(`Starting load from: ${CSV_URL}`);
+
+  function parseCSV(text){
+    const rows = [];
+    const lines = text.replace(/\r\n/g,'\n').split('\n');
+    for(const line of lines){
+      const row = [];
+      let cur = '';
+      let inQuotes = false;
+      for(let i=0;i<line.length;i++){
+        const ch = line[i];
+        if(ch === '"' ){
+          if(inQuotes && line[i+1] === '"'){ cur += '"'; i++; continue; }
+          inQuotes = !inQuotes;
+          continue;
+        }
+        if(ch === ',' && !inQuotes){
+          row.push(cur);
+          cur = '';
+          continue;
+        }
+        cur += ch;
+      }
+      row.push(cur);
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  async function fetchCSV(){
+    log('Fetching CSV...');
+    const res = await fetch(CSV_URL);
+    log(`Fetch response status: ${res.status}`);
+    if(!res.ok) throw new Error('Failed to load sheet — make sure it is published. Status: '+res.status);
+    const txt = await res.text();
+    log(`Received ${txt.length} characters`);
+    return parseCSV(txt);
+  }
+
+  function findMeta(grid){
+    for(let r=0;r<8 && r<grid.length;r++){
+      const text = (grid[r] || []).join(' ').trim();
+      if(!text) continue;
+      if(/week[:\s]/i.test(text) || /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(text)){
+        return {row:r, text};
+      }
+    }
+    return null;
+  }
+  
+  function findLastUpdated(grid){
+    for(let r=0;r<8 && r<grid.length;r++){
+      const text = (grid[r] || []).join(' ').trim();
+      if(/last updated/i.test(text)) return {row:r, text};
+    }
+    return null;
+  }
+
+  function findRankHeaders(grid){
+    const headers = [];
+    for(let r=0;r<12 && r<grid.length;r++){
+      for(let c=0;c<(grid[r]||[]).length;c++){
+        const cell = ((grid[r]||[])[c]||'').toString().trim().toLowerCase();
+        if(cell === 'rank') headers.push({row:r,col:c});
+      }
+    }
+    return headers;
+  }
+
+  function extractBlock(grid, header){
+    const out = [];
+    const start = header.row + 1;
+    const col = header.col;
+    let empties = 0;
+    for(let r=start;r<grid.length;r++){
+      const row = grid[r] || [];
+      const rank = (row[col] || '').toString().trim();
+      const employee = (row[col+1] || '').toString().trim();
+      const products = (row[col+2] || '').toString().trim();
+      const orders = (row[col+3] || '').toString().trim();
+      const avg = (row[col+4] || '').toString().trim();
+      if(!rank && !employee && !products && !orders && !avg){ 
+        empties++; 
+        if(empties>=3) break; 
+        else continue; 
+      }
+      // Only add row if it has an employee name AND some data
+      if(employee && (products || orders)) {
+        out.push({rank, employee, products, orders, avg});
+      }
+    }
+    return out;
+  }
+
+  function nice(x){ 
+    if(!x) return ''; 
+    const n = Number(x.toString().replace(/[,]/g,'')); 
+    return Number.isFinite(n) ? n.toLocaleString() : x; 
+  }
+
+  function buildCard(title,color,rows){
+    const head = `<div class="card-head" style="background:${color}">${title.toUpperCase()}</div>`;
+    
+    // Filter out empty rows (no employee name or all zeros)
+    const validRows = rows.filter(r => {
+      const hasEmployee = r.employee && r.employee.trim() !== '';
+      const hasOrders = r.orders && r.orders !== '0' && r.orders.trim() !== '';
+      const hasProducts = r.products && r.products !== '0' && r.products.trim() !== '';
+      return hasEmployee && (hasOrders || hasProducts);
+    });
+    
+    // Check if there's any actual data
+    if(!validRows || validRows.length === 0) {
+      // Return hidden card if no data
+      return `<div class="card" style="display:none;" data-category="${title}"></div>`;
+    }
+    
+    const rowsHtml = validRows.map((r,idx)=>{
+      const cls = idx===0? 'medal-gold' : idx===1? 'medal-silver' : idx===2? 'medal-bronze' : '';
+      const displayRank = (idx + 1).toString();
+      // Only split name to two lines if longer than 15 characters
+      const fullName = (r.employee || '').trim();
+      let employeeName = fullName;
+      if(fullName.length > 15) {
+        const nameParts = fullName.split(/\s+/);
+        if(nameParts.length >= 2) {
+          const firstName = nameParts.slice(0, -1).join(' ');
+          const lastName = nameParts[nameParts.length - 1];
+          employeeName = `${firstName}<br>${lastName}`;
+        }
+      }
+      return `<tr class="${cls}"><td class="col-rank">${displayRank}</td><td class="col-employee">${employeeName}</td><td class="col-prod">${nice(r.products)}</td><td class="col-orders">${nice(r.orders)}</td><td class="col-avg">${r.avg||''}</td></tr>`;
+    }).join('');
+    
+    return `
+      <div class="card" data-category="${title}">
+        ${head}
+        <div class="card-body">
+          <div class="table-container">
+            <table class="header-table">
+              <thead>
+                <tr>
+                  <th class="col-rank">Rank</th>
+                  <th class="col-employee">Employee</th>
+                  <th class="col-prod">Products</th>
+                  <th class="col-orders">Orders</th>
+                  <th class="col-avg">Avg<br>Item/Order</th>
+                </tr>
+              </thead>
+            </table>
+            <div class="scroll-wrapper">
+              <div class="scroll-content">
+                <table class="body-table">
+                  <tbody>${rowsHtml}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  try{
+    const raw = await fetchCSV();
+    log(`Parsed ${raw.length} rows`);
+    
+    const meta = findMeta(raw);
+    if(meta) {
+      document.getElementById('weekRange').textContent = meta.text.replace(/\s{2,}/g,' ').trim();
+      log(`Found meta: ${meta.text}`);
+    }
+    
+    const lu = findLastUpdated(raw);
+    if(lu) {
+      log(`Found last updated: ${lu.text}`);
+    }
+
+    const headers = findRankHeaders(raw);
+    log(`Found ${headers.length} rank headers at: ${JSON.stringify(headers)}`);
+    
+    let chosen = headers.slice(0,3);
+    if(chosen.length < 3){
+      log('Using fallback header positions');
+      const fallback = [{row:3,col:1},{row:3,col:7},{row:3,col:13}];
+      chosen = fallback.slice(0,3);
+    }
+
+    chosen.sort((a,b)=>a.col - b.col);
+
+    const cats = ['Full-time','Part-Time','Wholesale'];
+    const cols = {'Full-time':'var(--ft)','Part-Time':'var(--pt)','Wholesale':'var(--wh)'};
+    const boards = document.getElementById('boards');
+    boards.innerHTML = '';
+
+    for(let i=0;i<3;i++){
+      const h = chosen[i];
+      const rows = h ? extractBlock(raw,h) : [];
+      log(`${cats[i]}: extracted ${rows.length} rows from col ${h.col}`);
+      boards.insertAdjacentHTML('beforeend', buildCard(cats[i], cols[cats[i]], rows));
+    }
+    
+    // Adjust grid layout based on visible cards
+    const visibleCards = boards.querySelectorAll('.card:not([style*="display:none"])');
+    log(`Visible cards: ${visibleCards.length}`);
+    if(visibleCards.length === 2) {
+      boards.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    } else if(visibleCards.length === 1) {
+      boards.style.gridTemplateColumns = '1fr';
+      visibleCards[0].style.maxWidth = '800px';
+      visibleCards[0].style.margin = '0 auto';
+    }
+
+    // Initialize scrolling for each card
+    setTimeout(() => {
+      document.querySelectorAll('.scroll-wrapper').forEach(wrapper => {
+        const scrollContent = wrapper.querySelector('.scroll-content');
+        const tbody = scrollContent.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        if(rows.length === 0) return;
+        
+        const wrapperHeight = wrapper.clientHeight;
+        const contentHeight = scrollContent.offsetHeight;
+        
+        log(`Scroll setup: wrapper=${wrapperHeight}px, content=${contentHeight}px, rows=${rows.length}`);
+        
+        // Only scroll if content is taller than wrapper
+        if(contentHeight <= wrapperHeight) {
+          log('Content fits, no scrolling needed');
+          return;
+        }
+        
+        let position = 0;
+        let direction = 1; // 1 for down, -1 for up
+        const scrollSpeed = 25; // pixels per second
+        const maxScroll = contentHeight - wrapperHeight;
+        const pauseDuration = 3000; // 3 second pause in milliseconds
+        let lastTime = performance.now();
+        let isPaused = false;
+        let pauseStartTime = 0;
+        
+        function animate(currentTime) {
+          // Handle pause at boundaries
+          if(isPaused) {
+            const pauseElapsed = currentTime - pauseStartTime;
+            if(pauseElapsed >= pauseDuration) {
+              isPaused = false;
+              lastTime = currentTime; // Reset time after pause
+            } else {
+              requestAnimationFrame(animate);
+              return;
+            }
+          }
+          
+          const deltaTime = (currentTime - lastTime) / 1000; // convert to seconds
+          lastTime = currentTime;
+          
+          position += scrollSpeed * deltaTime * direction;
+          
+          // Check boundaries and trigger pause
+          if(direction === 1 && position >= maxScroll) {
+            position = maxScroll;
+            direction = -1; // Start scrolling up
+            isPaused = true;
+            pauseStartTime = currentTime;
+          } else if(direction === -1 && position <= 0) {
+            position = 0;
+            direction = 1; // Start scrolling down
+            isPaused = true;
+            pauseStartTime = currentTime;
+          }
+          
+          scrollContent.style.transform = `translateY(-${position}px)`;
+          
+          requestAnimationFrame(animate);
+        }
+        
+        log('Starting ping-pong animation with pauses');
+        requestAnimationFrame(animate);
+      });
+    }, 500);
+
+    log('✓ Dashboard loaded successfully!');
+
+  } catch(err){
+    log(`ERROR: ${err.message}`, true);
+    console.error(err);
+    document.getElementById('boards').innerHTML = `<div class="notice">⚠️ Error loading data: ${err.message}<br><br>Troubleshooting steps:<br>1. Make sure the Google Sheet is published (File → Share → Publish to web)<br>2. Select "Entire Document" or the specific sheet<br>3. Choose "Web page" format<br>4. Click Publish</div>`;
+  }
+})();
+</script>
+</body>
+</html>
